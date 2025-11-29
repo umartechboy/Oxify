@@ -15,7 +15,6 @@
 #define TextGlowPeriod 10000
 #define aqiAveraging 50
 SerialPM pms(PMS5003, 34, 22); // PMSx003, RX, TX
-
 DHT dht(5, DHT11);
 
 #define PANEL_RES_X 32      // Number of pixels wide of each INDIVIDUAL panel module. 
@@ -105,8 +104,6 @@ void setup() {
   // Display Setup
   dma_display.begin();
   pms.init();
-  display.setWidth(32);
-  display.setHeight(16);
 }
 
 #include <Fonts/FreeSerif9pt7b.h>

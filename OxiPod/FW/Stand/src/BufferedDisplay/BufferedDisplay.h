@@ -26,8 +26,6 @@ public:
     void drawPixel(int16_t x, int16_t y, Color color);
     uint16_t readPixel(int16_t x, int16_t y);
     void update(bool forceFullWidth = true, bool forceFullHeight = false);
-    void setWidth(int w){ _width = w; }
-    void setHeight(int h){ _height = h; }
 };
 
 #endif // BUFFERED_DISPLAY_H

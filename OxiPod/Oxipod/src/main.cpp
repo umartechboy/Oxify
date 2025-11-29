@@ -4,20 +4,49 @@
 #include <DHT.h>
 #include "..\..\FW\Stand\src\aqi.h"
 #include "..\..\FW\Stand\src\aqi.cpp"
+#include "..\..\FW\Stand\src\BufferedDisplay\Bitmap.h"
+#include "..\..\FW\Stand\src\BufferedDisplay\BufferedDisplay.h"
+#include "..\..\FW\Stand\src\BufferedDisplay\BufferedDisplay.cpp"
+#include "..\..\FW\Stand\src\BufferedDisplay\color.h"
+#include "..\..\FW\Stand\src\BufferedDisplay\color.cpp"
+#include "..\..\FW\Stand\src\BufferedDisplay\drawStringHelpers.h"
+#include "FastLEDDisplay.h"
 
 #define DHTPin 22
 #define PMTX 18
 #define PMRX 19
 #define LEDPin 5
 #define LEDStrips 2
-#define LedCount (300 * LEDStrips)
+#define LEDsPerStrip 300
+#define LedCount (LEDsPerStrip * LEDStrips)
 #define aqiAveraging 50
 
 // Define the array of leds
 CRGB leds[LedCount];
+FastLEDDisplay fDisplay(leds, LEDStrips, LEDsPerStrip);
 
 SerialPM pms(PMS5003, PMRX, PMTX); // PMSx003, RX, TX
 DHT dht(DHTPin, DHT11);
+
+int addrX, addrY, addrW, addrH;
+void dma_display_startWrite(){addrX = 0; addrY = 0; addrW = 0; addrH = 0;}
+void dma_display_setAddressWindow(int x, int y, int width, int height){
+  addrX = x;
+  addrY = y;
+  addrW = width;
+  addrH = height;
+}
+void dma_display_writePixels(uint16_t *colors, uint16_t count){
+  for (int y = 0; y < addrH; y++)
+    for (int x = 0; x < addrW; x++){
+      //dma_display.drawPixel(addrX + x, addrY + y, colors[0]);
+      colors++;
+    }
+}
+void dma_display_endWrite(){}
+
+BufferedDisplay display(fDisplay, dma_display_startWrite, dma_display_setAddressWindow, dma_display_writePixels, dma_display_endWrite);
+
 
 void setup() {
   Serial.begin(115200);
@@ -28,16 +57,17 @@ void setup() {
 int lastAQI = 0;
 int lastAqiUpdate = 0;
 void loop() {
-  for (int i = 0; i < LedCount; i++){
-    leds[i] = CRGB::Red;
-    FastLED.show();
+  fDisplay.fillScreen(0);
+  for (int x = 0; x < fDisplay.width(); x++){
+    for (int y = 0; y < fDisplay.height(); y++){
+        fDisplay.drawPixel(x, y, Color(255,0,0));  
+        FastLED.show();
+    } 
   }
-  for (int i = 0; i < LedCount; i++){
-    leds[i] = CRGB::Black;
-    FastLED.show();
-  }
-
   
+  delay(1000);
+  
+  return;
   if (millis() - lastAqiUpdate > 1000)
   {
     if (pms.read() == 0){
