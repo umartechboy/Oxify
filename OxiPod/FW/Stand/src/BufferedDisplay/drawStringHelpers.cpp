@@ -2,6 +2,28 @@
 #include <vector>
 
 // Utilities
+void centerStringTopAnchored(BufferedDisplay* g, const char* str,  int16_t x, int16_t y, int16_t* wOut, int16_t* hOut) {
+    int16_t x1, y1;
+    uint16_t w, h;
+    g->setTextWrap(false);
+    g->getTextBounds(str, x, y, &x1, &y1, &w, &h);
+    int16_t errorInX = x1 - x;
+    int16_t errorInY = y1 - y;
+    //g->drawRect(x, y, w, h, ST7735_CYAN);
+    //g->drawRect(x1, y1, w, h, ST7735_YELLOW);
+    g->setCursor(x - w / 2 - errorInX, y);
+    g->print(str);
+    //g->SetOpacity(30);
+    //g->setCursor(x, y);
+    //g->print(str);
+    //g->SetOpacity(100);
+    //g->print(str);
+    if (wOut)
+        *wOut = w;
+    if (hOut)
+        *hOut = h;
+}
+// Utilities
 void centerString(BufferedDisplay* g, const char* str,  int16_t x, int16_t y, int16_t* wOut, int16_t* hOut) {
     int16_t x1, y1;
     uint16_t w, h;

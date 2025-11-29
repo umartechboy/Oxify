@@ -6,7 +6,15 @@
 #include "dma/ESP32-HUB75-MatrixPanel-I2S-DMA.h"
 #include "BufferedDisplay/BufferedDisplay.h"
 #include "BufferedDisplay\drawStringHelpers.h"
+#include <PMserial.h> // Arduino library for PM sensors with serial interface
 #include <DHT.h>
+#include "aqi.h"
+#define RingDelay 3000
+#define RingSpeed_ms 100
+#define RingSize 8
+#define TextGlowPeriod 10000
+#define aqiAveraging 50
+SerialPM pms(PMS5003, 34, 22); // PMSx003, RX, TX
 
 DHT dht(5, DHT11);
 
@@ -96,6 +104,7 @@ void setup() {
   dht.begin();
   // Display Setup
   dma_display.begin();
+  pms.init();
   display.setWidth(32);
   display.setHeight(16);
 }
@@ -105,11 +114,53 @@ uint8_t wheelval = 0;
 long lastGlow = 0;
 long lastGlowExpand = 0;
 int focusR = 0;
-long lastDhtUpdate = 0;
+long lastAqiUpdate = 0;
+int lastAQI = 0;
 void loop() {
-  int col = colorWheel(wheelval);
-  int w = 6;
-  if (millis() - lastGlow > 3000){
+  if (millis() - lastAqiUpdate > 1000)
+  {
+    if (pms.read() == 0){
+      // In your loop function:
+      lastAQI = (lastAQI * aqiAveraging + getFinalAQI(pms.pm25, pms.pm10, dht.readTemperature(), dht.readHumidity()) * (100 - aqiAveraging)) / 100;
+      printAQIDebugInfo(pms.pm25, pms.pm10, dht.readTemperature(), dht.readHumidity());
+      lastAqiUpdate = millis();
+    }
+    else{ // something went wrong
+      switch (pms.status)
+      {
+      case pms.OK: // should never come here
+        break;     // included to compile without warnings
+      case pms.ERROR_TIMEOUT:
+        Serial.println(F(PMS_ERROR_TIMEOUT));
+        break;
+      case pms.ERROR_MSG_UNKNOWN:
+        Serial.println(F(PMS_ERROR_MSG_UNKNOWN));
+        break;
+      case pms.ERROR_MSG_HEADER:
+        Serial.println(F(PMS_ERROR_MSG_HEADER));
+        break;
+      case pms.ERROR_MSG_BODY:
+        Serial.println(F(PMS_ERROR_MSG_BODY));
+        break;
+      case pms.ERROR_MSG_START:
+        Serial.println(F(PMS_ERROR_MSG_START));
+        break;
+      case pms.ERROR_MSG_LENGTH:
+        Serial.println(F(PMS_ERROR_MSG_LENGTH));
+        break;
+      case pms.ERROR_MSG_CKSUM:
+        Serial.println(F(PMS_ERROR_MSG_CKSUM));
+        break;
+      case pms.ERROR_PMS_TYPE:
+        Serial.println(F(PMS_ERROR_PMS_TYPE));
+        break;
+      }
+    }
+  }
+  AQIColor _c = getAQIColorRGB(lastAQI);
+
+  int w = RingSize;
+  if (millis() - lastGlow > RingDelay){
     focusR = 0;
     lastGlowExpand  = millis();
   }
@@ -119,21 +170,26 @@ void loop() {
       int dist = abs(r - focusR);
       int o = ((w - dist) * 255) / w;
       if (o < 0) o = 0; else if (o > 255) o = 255;
-      display.fillEllipse(16, 8, r, r / 2, colorWheel(wheelval, o));
+      
+      uint16_t aqiColor2 = dma_display.color565((_c.r * o) / 255, (_c.g * o) / 255,(_c.b * o) / 255);
+      display.fillEllipse(16, 8, r, r / 2, aqiColor2);
     }
-    focusR++;
     lastGlow = millis();
-    if (millis() - lastGlowExpand > 20){
+    if (millis() - lastGlowExpand > RingSpeed_ms){
       focusR++;
       lastGlowExpand = millis();
     }
   }
+
+  
   display.setFont(&FreeSerif9pt7b);
   display.setTextColor(0);
   display.setCursor(5, 5);
-  String str = "128";
+  String str = String(lastAQI);
+  if (lastAQI == 0)
+  str = "-";
 
-  int period = 10000; // 10 second period
+  int period = TextGlowPeriod; // 10 second period
   long currentTime = millis() % period;
   int opacity = map(currentTime, 0, period, 0, 510); // 0-510 for full cycle
 
@@ -142,19 +198,12 @@ void loop() {
       opacity = 510 - opacity; // Reverse from 255 back down to 0
   }
 
+  uint16_t aqiColor = dma_display.color565((_c.r * opacity) / 255, (_c.g * opacity) / 255,(_c.b * opacity) / 255);
   // Use the color position for your color wheel
-  display.setTextColor(colorWheel(0, opacity)); // Full brightness
+  display.setTextColor(aqiColor); // Full brightness
   //Serial.println(opacity);
 
   centerString(&display, str.c_str(), 16, 8);
   display.update();
 
-  if (millis() - lastDhtUpdate > 100){
-    lastDhtUpdate = millis();
-    
-    float h = dht.readHumidity();
-    // Read temperature as Celsius (the default)
-    float t = dht.readTemperature();
-    Serial.printf("H: %f T: %f\n", dht.readHumidity(), dht.readTemperature());
-  } 
 }
