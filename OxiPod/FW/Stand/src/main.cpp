@@ -8,6 +8,7 @@
 #include "BufferedDisplay\drawStringHelpers.h"
 #include <DHT.h>
 
+DHT dht(5, DHT11);
 
 #define PANEL_RES_X 32      // Number of pixels wide of each INDIVIDUAL panel module. 
 #define PANEL_RES_Y 16     // Number of pixels tall of each INDIVIDUAL panel module.
@@ -92,6 +93,7 @@ BufferedDisplay display(dma_display, dma_display_startWrite, dma_display_setAddr
 void setup() {
   Serial.begin(115200);
   Serial.println("ESP32-HUB75-MatrixPanel-I2S-DMA Example");
+  dht.begin();
   // Display Setup
   dma_display.begin();
   display.setWidth(32);
@@ -103,6 +105,7 @@ uint8_t wheelval = 0;
 long lastGlow = 0;
 long lastGlowExpand = 0;
 int focusR = 0;
+long lastDhtUpdate = 0;
 void loop() {
   int col = colorWheel(wheelval);
   int w = 6;
@@ -145,4 +148,13 @@ void loop() {
 
   centerString(&display, str.c_str(), 16, 8);
   display.update();
+
+  if (millis() - lastDhtUpdate > 100){
+    lastDhtUpdate = millis();
+    
+    float h = dht.readHumidity();
+    // Read temperature as Celsius (the default)
+    float t = dht.readTemperature();
+    Serial.printf("H: %f T: %f\n", dht.readHumidity(), dht.readTemperature());
+  } 
 }
