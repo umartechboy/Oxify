@@ -16,7 +16,7 @@
 #define PMTX 18
 #define PMRX 19
 #define LEDPin 5
-#define LEDStrips 2
+#define LEDStrips 35
 #define LEDsPerStrip 300
 #define LedCount (LEDsPerStrip * LEDStrips)
 #define aqiAveraging 50
@@ -48,7 +48,7 @@ void dma_display_endWrite(){}
 BufferedDisplay display(fDisplay, dma_display_startWrite, dma_display_setAddressWindow, dma_display_writePixels, dma_display_endWrite);
 
 
-void setup() {
+void setup2() {
   Serial.begin(115200);
   FastLED.addLeds<NEOPIXEL, 5>(leds, LedCount);  // GRB ordering is assumed
   pms.init();
@@ -56,16 +56,13 @@ void setup() {
 
 int lastAQI = 0;
 int lastAqiUpdate = 0;
-void loop() {
-  fDisplay.fillScreen(0);
-  for (int x = 0; x < fDisplay.width(); x++){
-    for (int y = 0; y < fDisplay.height(); y++){
-        fDisplay.drawPixel(x, y, Color(255,0,0));  
-        FastLED.show();
-    } 
-  }
+void loop2() {
   
-  delay(1000);
+  return;
+  fDisplay.fillScreen(0);
+  FastLED.show();
+  fDisplay.fillScreen(Color(255,0,0));
+  FastLED.show();
   
   return;
   if (millis() - lastAqiUpdate > 1000)
